@@ -1,59 +1,57 @@
-var createError = require('http-errors');
-var path = require('path');
-var cookieParser = require('cookie-parser');
-var logger = require('morgan');
-const express = require('express');
-const bodyParser = require('body-parser');
+require("dotenv").config();
+const express = require("express");
+const bodyParser = require("body-parser");
+const cors = require('cors');
+const mongoose = require("mongoose");
+const passport = require('passport');
+const session = require('express-session');
+const cookieParser = require("cookie-parser");
+const methodOverride = require("method-override");
+const path = require("path");
+const swaggerUi = require('swagger-ui-express');
+const swaggerDocument = require('./swagger.json');
+
 const app = express();
-var indexRouter = require('./routes/index');
-var aboutRouter = require('./routes/about');
-var registerRouter = require('./routes/register');
-var productsRouter = require('./routes/products');
-const UserRoute = require('./routes/User')
-const dbConfig = require('./config/db.config.js');
-const mongoose = require('mongoose');
-mongoose.Promise = global.Promise;
-mongoose.connect(dbConfig.url, {
-  useNewUrlParser: true
-}).then(() => {
-  console.log("Database Connected Successfully!!");
-}).catch(err => {
-  console.log('Could not connect to the database', err);
-  process.exit();
-});
 
-
-app.use(bodyParser.urlencoded({ extended: true }))
-app.use(bodyParser.json())
-// view engine setup
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'ejs');
-
-app.use(logger('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
+// app.use(cors());
+// app.use(require('morgan')('dev'));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({extended: false}));
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/user',UserRoute)
-app.use('/', indexRouter);
-app.use('/about', aboutRouter);
-app.use('/products', productsRouter);
-app.use('/register', registerRouter);
-// catch 404 and forward to error handler
-app.use(function(req, res, next) {
-  next(createError(404));
+app.set('views', path.join(__dirname + '/views'));
+app.set('view engine', 'ejs');
+
+app.use(cookieParser());
+app.use(methodOverride('_method'));
+
+
+app.use(session({
+    secret: process.env.SECRET,
+    resave: false,
+    saveUninitialized: false
+}));
+app.use(passport.initialize());
+app.use(passport.session());
+app.use((req, res, next) => {
+    res.locals.isAuthenticated = req.isAuthenticated() || req.session.isLoggedIn;
+    next();
 });
 
-// error handler
-app.use(function(err, req, res, next) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
 
-  // render the error page
-  res.status(err.status || 500);
-  res.render('error');
-});
+const keys = require("./config/keys");
+mongoose.Promise = global.Promise;
+mongoose.connect(keys.mongoURI)
+    .then(() => console.log("MongoDB connected successfully"))
+    .catch((err) => console.log("err"));
+
+
+app.use("/", require("./routes/root"));
+app.use("/about", require("./routes/about"));
+app.use("/products", require("./routes/products"));
+app.use("/cart", require("./routes/cart"));
+app.use("/profile", require("./routes/profile"));
+app.use("/auth", require("./routes/auth"));
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 module.exports = app;
