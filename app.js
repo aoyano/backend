@@ -4,7 +4,7 @@ const bodyParser = require("body-parser");
 const cors = require('cors');
 const mongoose = require("mongoose");
 const passport = require('passport');
-const session = require('express-session');
+const session = require('cookie-session');
 const cookieParser = require("cookie-parser");
 const methodOverride = require("method-override");
 const path = require("path");
@@ -25,24 +25,7 @@ app.set('view engine', 'ejs');
 app.use(cookieParser());
 app.use(methodOverride('_method'));
 
-app.set('trust proxy', 1);
 
-app.use(session({
-    cookie:{
-        secure: true,
-        maxAge:60000
-    },
-    secret: 'secret',
-    saveUninitialized: true,
-    resave: false
-}));
-
-app.use(function(req,res,next){
-    if(!req.session){
-        return next(new Error('Oh no')) //handle error
-    }
-    next() //otherwise continue
-});
 app.use(session({
     secret: process.env.SECRET,
     resave: false,
